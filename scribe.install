@@ -1,0 +1,12 @@
+<?php
+/**
+ *  @file
+ *  scribe.install
+ *
+ *  @author blazey http://drupal.org/user/353861
+ */
+
+function scribe_install() {
+  drupal_set_message(t("Scribe has been installed but not enabled. Set your server settings at !settings_from_link.",
+          array('!settings_from_link' => l('admin/config/scribe', 'admin/config/scribe'))));
+}

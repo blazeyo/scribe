@@ -1,0 +1,9 @@
+name = Scribe
+description = Use scribe server for db logs.
+
+core = 7.x
+version = 7.x-1.0
+
+files[] = scribe.module
+
+configure = admin/config/scribe

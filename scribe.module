@@ -1,0 +1,111 @@
+<?php
+/**
+ *  @file
+ *  scribe.module
+ *
+ *  @author blazey http://drupal.org/user/353861
+ */
+
+/**
+ *  Implements hook_menu().
+ */
+function scribe_menu() {
+  $items['scribe-test'] = array(
+    'title' => 'Scribe test page',
+    'page callback' => 'scribe_test',
+    'access arguments' => array('access content'),
+  );
+  $items['admin/config/scribe'] = array(
+    'title' => 'Scribe settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('scribe_settings_form'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'scribe.admin.inc'
+  );
+  
+  return $items;
+}
+
+/**
+ *  Implements hook_theme().
+ */
+function scribe_theme($existing, $type, $theme, $path) {
+  return array(
+    'scribe_message' => array('render element' => 'log_entry'),
+  );
+}
+
+/**
+ *  Implements hook_watchdog().
+ */
+function scribe_watchdog(array $log_entry) {
+  if (variable_get('scribe_enabled', 0)) {
+    $log_entry['#theme'] = 'scribe_message';
+    $log_entry['path'] = $_GET['q'];
+    scribe(drupal_render($log_entry));
+  }
+}
+
+/**
+ *  Testing callback.
+ */
+function scribe_test() {
+  scribe("testing scribe module\n\n");
+
+  return t("If you don't see any errors here your scribe server settings are ok");
+}
+
+/**
+ *  Sends message to scribe server.
+ *
+ *  @param string $message
+ */
+function scribe($message) {
+  $host = variable_get('scribe_hostname', 'localhost');
+  $port = (int) variable_get('scribe_port', 1463);
+
+  $GLOBALS['THRIFT_ROOT'] = drupal_get_path('module', 'scribe') . '/scribe-php-client/thrift';
+
+  include_once $GLOBALS['THRIFT_ROOT'] . '/packages/scribe/scribe.php';
+  include_once $GLOBALS['THRIFT_ROOT'] . '/transport/TTransport.php';
+  include_once $GLOBALS['THRIFT_ROOT'] . '/transport/TSocket.php';
+  include_once $GLOBALS['THRIFT_ROOT'] . '/transport/TFramedTransport.php';
+  include_once $GLOBALS['THRIFT_ROOT'] . '/protocol/TProtocol.php';
+  include_once $GLOBALS['THRIFT_ROOT'] . '/protocol/TBinaryProtocol.php';
+
+  $entry = new LogEntry(array(
+    'category' => variable_get('scribe_category', variable_get('site_name', 'Drupal')),
+    'message' => $message,
+  ));
+
+  try {
+    $socket = new TSocket($host, $port, true);
+    $transport = new TFramedTransport($socket);
+    $protocol = new TBinaryProtocol($transport, false, false);
+    $scribe_client = new scribeClient($protocol, $protocol);
+
+    $transport->open();
+    $scribe_client->Log(array($entry));
+    $transport->close();
+  } catch (Exception $x) {
+    drupal_set_message('Error connecting to scribe server at ' . $host . ':' . $port, 'error');
+  }
+}
+
+/**
+ *  Themes scribe message.
+ */
+function theme_scribe_message($vars) {
+  drupal_set_message('<pre>' . print_r($vars, true) . '</pre>');
+  $log_entry = $vars['log_entry'];
+
+  $message =
+  "Watchdog message severity:" . $log_entry['severity'] .
+  "\nType: " . $log_entry['type'] .
+  "\nMessage: " . t($log_entry['message'], $log_entry['variables']) .
+  "\nUid: " . $log_entry['user']->uid .
+  "\nPath: " . $log_entry['path'] .
+  "\n";
+
+  return $message;
+}
