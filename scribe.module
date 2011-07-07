@@ -40,8 +40,12 @@ function scribe_theme($existing, $type, $theme, $path) {
  */
 function scribe_watchdog(array $log_entry) {
   if (variable_get('scribe_enabled', 0)) {
-    $log_entry['#theme'] = 'scribe_message';
+    $levels = watchdog_severity_levels();
+    
+    $log_entry['severity_string'] = $levels[$log_entry['severity']];
     $log_entry['path'] = $_GET['q'];
+    $log_entry['#theme'] = 'scribe_message';
+    
     scribe(drupal_render($log_entry));
   }
 }
@@ -96,11 +100,10 @@ function scribe($message) {
  *  Themes scribe message.
  */
 function theme_scribe_message($vars) {
-  drupal_set_message('<pre>' . print_r($vars, true) . '</pre>');
   $log_entry = $vars['log_entry'];
 
   $message =
-  "Watchdog message severity:" . $log_entry['severity'] .
+  "Watchdog message severity:" . $log_entry['severity'] . ' - ' . $log_entry['severity_string'] .
   "\nType: " . $log_entry['type'] .
   "\nMessage: " . t($log_entry['message'], $log_entry['variables']) .
   "\nUid: " . $log_entry['user']->uid .
