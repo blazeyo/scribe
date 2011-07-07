@@ -92,7 +92,8 @@ function scribe($message) {
     $scribe_client->Log(array($entry));
     $transport->close();
   } catch (Exception $x) {
-    drupal_set_message('Error connecting to scribe server at ' . $host . ':' . $port, 'error');
+    drupal_set_message(t('Error connecting to scribe server at @host:@port',
+            array('@host' => $host, '@port' => $port)), 'error');
   }
 }
 
